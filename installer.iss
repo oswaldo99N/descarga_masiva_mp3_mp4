@@ -28,10 +28,11 @@ Source: "dist\NexoDescargas\*"; DestDir: "{app}"; Flags: ignoreversion recursesu
 Source: "THIRD_PARTY_NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "licenses\GPL-3.0.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "assets\logo.ico"; DestDir: "{app}"; DestName: "NexoDescargas.ico"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Nexo Descargas"; Filename: "{app}\NexoDescargas.exe"
-Name: "{autodesktop}\Nexo Descargas"; Filename: "{app}\NexoDescargas.exe"; Tasks: desktopicon
+Name: "{group}\Nexo Descargas"; Filename: "{app}\NexoDescargas.exe"; IconFilename: "{app}\NexoDescargas.ico"; AppUserModelID: "Oswaldo.NexoDescargas"
+Name: "{autodesktop}\Nexo Descargas"; Filename: "{app}\NexoDescargas.exe"; IconFilename: "{app}\NexoDescargas.ico"; AppUserModelID: "Oswaldo.NexoDescargas"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:"

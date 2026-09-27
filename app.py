@@ -55,6 +55,11 @@ STATUS_NAMES = {
 
 class App(tk.Tk):
     def __init__(self) -> None:
+        if os.name == "nt":
+            # Windows uses this identity to match the window to its shortcuts.
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                "Oswaldo.NexoDescargas")
         super().__init__()
         self.title(f"Nexo Descargas {APP_VERSION}")
         self.geometry("1040x740")
@@ -62,6 +67,8 @@ class App(tk.Tk):
         self.configure(bg=BG)
         self.logo_image = tk.PhotoImage(file=str(resource_path("assets", "logo-64.png")))
         self.iconphoto(True, self.logo_image)
+        if os.name == "nt":
+            self.iconbitmap(default=str(resource_path("assets", "logo.ico")))
         self.protocol("WM_DELETE_WINDOW", self._close)
 
         self.store = QueueStore()

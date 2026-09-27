@@ -32,6 +32,7 @@ $arguments = @(
     "--add-binary", ".tools\node\node.exe;bin\node",
     "--add-data", ".tools\node\LICENSE;bin\node",
     "--add-data", "assets\logo-64.png;assets",
+    "--add-data", "assets\logo.ico;assets",
     "app.py"
 )
 & $python @arguments

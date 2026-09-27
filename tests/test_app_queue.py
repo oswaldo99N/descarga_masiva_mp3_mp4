@@ -105,6 +105,18 @@ class AppQueueTests(unittest.TestCase):
         self.pump_until(lambda: self.app.available_release is None)
         self.assertEqual(self.app.update_button.cget("text"), "Buscar actualizaciones")
 
+    def test_automatic_update_opens_confirmation_dialog(self):
+        release = Release("0.1.2", "Aviso de prueba", "v0.1.2",
+                          "Nexo-Descargas-Setup-0.1.2.exe",
+                          "https://github.com/example/nexo/releases/download/v0.1.2/"
+                          "Nexo-Descargas-Setup-0.1.2.exe", "a" * 64, 100)
+        with patch("app.messagebox.askyesno", return_value=False) as prompt:
+            self.app.events.put(("update_check", (release, False, None)))
+            self.pump_until(lambda: prompt.called)
+
+        self.assertIn("0.1.2", prompt.call_args.args[1])
+        self.assertEqual(self.app.update_button.cget("text"), "Actualizar a 0.1.2")
+
 
 if __name__ == "__main__":
     unittest.main()

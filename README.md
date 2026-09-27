@@ -6,7 +6,7 @@ Aplicación de escritorio para Windows que descarga audio y video de YouTube, Fa
 
 Descarga `Nexo-Descargas-Setup-X.Y.Z.exe` de una publicación oficial de Nexo Descargas y ejecútalo. El instalador crea un acceso en el menú Inicio, ofrece uno en el escritorio y añade el desinstalador a Windows. Incluye Python, yt-dlp, FFmpeg y Node.js: no tienes que instalarlos por separado. Las descargas y el historial permanecen en tu equipo.
 
-La opción **Buscar actualizaciones** consulta las versiones publicadas en [GitHub](https://github.com/oswaldo99N/descarga_masiva_mp3_mp4/releases). Cuando haya una nueva, **Actualizar** descargará el instalador, comprobará su SHA-256 y te pedirá confirmación antes de abrirlo. Para que aparezcan avisos, debe existir una publicación estable más reciente con el instalador adjunto.
+Al abrir la aplicación se buscan nuevas versiones en [GitHub](https://github.com/oswaldo99N/descarga_masiva_mp3_mp4/releases). Si hay una, aparece un cuadro para actualizar o dejarlo para después; el botón **Actualizar** queda disponible. El instalador se descarga, se comprueba su SHA-256 y se abre tras tu confirmación. La publicación debe ser estable e incluir el instalador adjunto.
 
 ## Ejecutar desde el código fuente
 

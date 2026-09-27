@@ -50,7 +50,7 @@ STATUS_NAMES = {
 class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Nexo Descargas")
+        self.title(f"Nexo Descargas {APP_VERSION}")
         self.geometry("980x700")
         self.minsize(820, 620)
         self.configure(bg=BG)
@@ -717,6 +717,8 @@ class App(tk.Tk):
                         self.update_button.configure(state="normal", command=self._install_update,
                                                      text=f"Actualizar a {release.version}")
                         self._set_message(f"Nueva versión {release.version} disponible")
+                        if not manual:
+                            self.after_idle(self._install_update)
                     elif manual:
                         self._set_message(f"Nexo Descargas {APP_VERSION} está actualizado")
                     if not release:

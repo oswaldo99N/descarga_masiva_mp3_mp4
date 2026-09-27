@@ -14,6 +14,8 @@ if (-not (Test-Path -LiteralPath ".tools\ffmpeg\ffmpeg.exe") -or
 
 & $python -m pip install -r requirements-build.txt
 if ($LASTEXITCODE -ne 0) { throw "No se pudo instalar PyInstaller." }
+& $python preparar_icono.py
+if ($LASTEXITCODE -ne 0) { throw "No se pudo preparar el icono." }
 $version = (& $python -c "from release_config import APP_VERSION; print(APP_VERSION)").Trim()
 if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+$') {
     throw "La versión de release_config.py debe tener formato X.Y.Z."
@@ -22,12 +24,14 @@ if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+$') {
 $arguments = @(
     "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--windowed",
     "--name", "NexoDescargas",
+    "--icon", "assets\logo.ico",
     "--collect-all", "yt_dlp", "--collect-all", "yt_dlp_ejs",
     "--copy-metadata", "yt-dlp", "--copy-metadata", "yt-dlp-ejs",
     "--add-binary", ".tools\ffmpeg\ffmpeg.exe;bin\ffmpeg",
     "--add-binary", ".tools\ffmpeg\ffprobe.exe;bin\ffmpeg",
     "--add-binary", ".tools\node\node.exe;bin\node",
     "--add-data", ".tools\node\LICENSE;bin\node",
+    "--add-data", "assets\logo-64.png;assets",
     "app.py"
 )
 & $python @arguments

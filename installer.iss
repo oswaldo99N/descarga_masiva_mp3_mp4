@@ -17,6 +17,7 @@ OutputBaseFilename=Nexo-Descargas-Setup-{#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=assets\logo.ico
 CloseApplications=yes
 RestartApplications=no
 UninstallDisplayName=Nexo Descargas

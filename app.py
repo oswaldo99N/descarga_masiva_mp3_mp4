@@ -6,11 +6,13 @@ import os
 import queue
 import subprocess
 import threading
+import time
 import tkinter as tk
 from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from app_paths import resource_path
 from downloader import (
     DownloadCancelled,
     DownloadOptions,
@@ -27,15 +29,19 @@ from release_config import APP_VERSION, REPOSITORY
 from update_service import Release, check_for_update, download_installer
 
 
-BG = "#f5f5f2"
+BG = "#f3f6fb"
 SURFACE = "#ffffff"
-INK = "#1f2825"
-MUTED = "#67716c"
-LINE = "#dce2dd"
-ACCENT = "#286849"
-ACCENT_HOVER = "#1d5239"
-SOFT = "#e7f1ea"
-ERROR = "#a33636"
+INK = "#182943"
+MUTED = "#63738b"
+LINE = "#dce5f1"
+ACCENT = "#1559c9"
+ACCENT_HOVER = "#0d47a6"
+SOFT = "#e9f1ff"
+ERROR = "#b4233d"
+ERROR_HOVER = "#921a32"
+CHECK_INTERVAL_MS = 30 * 60 * 1000
+RETRY_INTERVAL_MS = 5 * 60 * 1000
+FOCUS_CHECK_SECONDS = 10 * 60
 
 BROWSERS = {"Sin sesión": "none", "Chrome": "chrome", "Edge": "edge", "Firefox": "firefox"}
 CONTAINERS = {"Automático": "auto", "MP4": "mp4", "MKV": "mkv"}
@@ -51,9 +57,11 @@ class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(f"Nexo Descargas {APP_VERSION}")
-        self.geometry("980x700")
-        self.minsize(820, 620)
+        self.geometry("1040x740")
+        self.minsize(900, 700)
         self.configure(bg=BG)
+        self.logo_image = tk.PhotoImage(file=str(resource_path("assets", "logo-64.png")))
+        self.iconphoto(True, self.logo_image)
         self.protocol("WM_DELETE_WINDOW", self._close)
 
         self.store = QueueStore()
@@ -75,6 +83,8 @@ class App(tk.Tk):
         self._checking_updates = False
         self._downloading_update = False
         self.available_release: Release | None = None
+        self._prompted_release_version: str | None = None
+        self._last_update_check = 0.0
 
         self.url = tk.StringVar()
         self.scope = tk.StringVar(value="single")
@@ -102,6 +112,7 @@ class App(tk.Tk):
         self._poll_timer = self.after(100, self._poll_events)
         if REPOSITORY:
             self._update_timer = self.after(3000, self._check_updates)
+            self.bind("<FocusIn>", self._on_window_focus, add="+")
 
     def _style(self) -> None:
         style = ttk.Style(self)
@@ -118,15 +129,19 @@ class App(tk.Tk):
         style.map("TCheckbutton", background=[("active", SURFACE)])
         style.configure("TEntry", fieldbackground=SURFACE, foreground=INK, padding=7)
         style.configure("TCombobox", fieldbackground=SURFACE, foreground=INK, padding=5)
+        style.map("TCombobox", fieldbackground=[("readonly", SURFACE)])
         style.configure("TProgressbar", troughcolor=LINE, background=ACCENT, borderwidth=0)
         style.configure("TNotebook", background=BG, borderwidth=0)
-        style.configure("TNotebook.Tab", padding=(19, 9), font=("Segoe UI Semibold", 10))
-        style.map("TNotebook.Tab", background=[("selected", SURFACE)],
-                  foreground=[("selected", ACCENT)])
-        style.configure("Treeview", rowheight=29, font=("Segoe UI", 9),
+        style.configure("TNotebook.Tab", padding=(19, 8), font=("Segoe UI Semibold", 10),
+                        background=BG, foreground=MUTED)
+        style.map("TNotebook.Tab", background=[("selected", SURFACE), ("active", SOFT)],
+                  foreground=[("selected", ACCENT), ("active", INK)])
+        style.configure("Treeview", rowheight=31, font=("Segoe UI", 9),
                         background=SURFACE, fieldbackground=SURFACE, foreground=INK)
+        style.map("Treeview", background=[("selected", SOFT)],
+                  foreground=[("selected", INK)])
         style.configure("Treeview.Heading", font=("Segoe UI Semibold", 9),
-                        background=BG, foreground=INK)
+                        background="#edf2f9", foreground=INK)
 
     def _label(self, parent, text: str, *, surface=False, muted=False, **kw):
         if surface:
@@ -142,7 +157,7 @@ class App(tk.Tk):
             activeforeground=INK if secondary else "#ffffff",
             activebackground=SOFT if secondary else ACCENT_HOVER,
             disabledforeground=MUTED, relief="flat", bd=0, cursor="hand2",
-            padx=14, pady=7, highlightthickness=1 if secondary else 0,
+            padx=15, pady=6, highlightthickness=1 if secondary else 0,
             highlightbackground=LINE,
         )
 
@@ -155,15 +170,22 @@ class App(tk.Tk):
         return shell, inner
 
     def _build(self) -> None:
-        body = ttk.Frame(self, padding=(24, 14, 24, 11))
+        body = ttk.Frame(self, padding=(20, 12, 20, 9))
         body.pack(fill="both", expand=True)
         body.columnconfigure(0, weight=1)
         body.rowconfigure(2, weight=1)
 
-        ttk.Label(body, text="Nexo Descargas", font=("Segoe UI Semibold", 22),
-                  foreground=INK, background=BG).grid(row=0, column=0, sticky="w")
-        self._label(body, "YouTube · Facebook · Instagram · X · TikTok", muted=True).grid(
-            row=1, column=0, sticky="w", pady=(2, 10))
+        header = ttk.Frame(body)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        header.columnconfigure(1, weight=1)
+        ttk.Label(header, image=self.logo_image, background=BG).grid(
+            row=0, column=0, rowspan=2, sticky="w", padx=(0, 13))
+        ttk.Label(header, text="Nexo Descargas", font=("Segoe UI Semibold", 23),
+                  foreground=INK, background=BG).grid(row=0, column=1, sticky="sw")
+        self._label(header, "Audio y video de YouTube, Facebook, Instagram, X y TikTok",
+                    muted=True).grid(row=1, column=1, sticky="nw", pady=(1, 0))
+        ttk.Label(header, text=f"Versión {APP_VERSION}", font=("Segoe UI", 9),
+                  foreground=MUTED, background=BG).grid(row=0, column=2, sticky="ne", padx=(12, 0))
 
         self.tabs = ttk.Notebook(body)
         self.tabs.grid(row=2, column=0, sticky="nsew")
@@ -174,11 +196,12 @@ class App(tk.Tk):
         self._build_new_tab()
         self._build_queue_tab()
 
-        footer = ttk.Frame(body)
-        footer.grid(row=3, column=0, sticky="ew", pady=(11, 0))
+        footer = tk.Frame(body, bg=SURFACE, padx=14, pady=7,
+                          highlightbackground=LINE, highlightthickness=1)
+        footer.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         footer.columnconfigure(0, weight=1)
-        self.status = ttk.Label(footer, text="Listo", background=BG, foreground=INK,
-                                font=("Segoe UI Semibold", 10))
+        self.status = ttk.Label(footer, text="Listo", background=SURFACE, foreground=INK,
+                                font=("Segoe UI Semibold", 10), wraplength=480)
         self.status.grid(row=0, column=0, sticky="w")
         self.update_button = self._button(footer, "Buscar actualizaciones",
                                           lambda: self._check_updates(manual=True), secondary=True)
@@ -189,7 +212,7 @@ class App(tk.Tk):
         tab.columnconfigure(0, weight=1)
         tab.columnconfigure(1, weight=1)
 
-        link_shell, link = self._panel(tab, (18, 9))
+        link_shell, link = self._panel(tab, (18, 7))
         link_shell.grid(row=0, column=0, columnspan=2, sticky="ew")
         self._label(link, "Enlace de video o playlist", surface=True).grid(row=0, column=0, sticky="w")
         link_row = ttk.Frame(link, style="Surface.TFrame")
@@ -203,9 +226,9 @@ class App(tk.Tk):
                                    muted=True, wraplength=830)
         self.preview.grid(row=2, column=0, sticky="w")
 
-        left_shell, left = self._panel(tab, (18, 10))
+        left_shell, left = self._panel(tab, (18, 8))
         left_shell.grid(row=1, column=0, sticky="nsew", padx=(0, 8), pady=(7, 0))
-        right_shell, right = self._panel(tab, (18, 10))
+        right_shell, right = self._panel(tab, (18, 8))
         right_shell.grid(row=1, column=1, sticky="nsew", padx=(8, 0), pady=(7, 0))
 
         self._label(left, "Descarga", surface=True,
@@ -276,7 +299,7 @@ class App(tk.Tk):
                                             values=tuple(LANGUAGES))
         self.language_combo.grid(row=1, column=1, sticky="ew", pady=(5, 0))
 
-        bottom_shell, bottom = self._panel(tab, (18, 8))
+        bottom_shell, bottom = self._panel(tab, (18, 7))
         bottom_shell.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(7, 0))
         self._label(bottom, "Guardar en", surface=True).grid(row=0, column=0, sticky="w")
         folder_row = ttk.Frame(bottom, style="Surface.TFrame")
@@ -287,7 +310,7 @@ class App(tk.Tk):
             row=0, column=1, padx=(9, 0))
 
         actions = ttk.Frame(tab)
-        actions.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+        actions.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(5, 0))
         self._button(actions, "Añadir e iniciar", lambda: self._add(start=True)).pack(side="left")
         self._button(actions, "Solo añadir", lambda: self._add(start=False), secondary=True).pack(
             side="left", padx=(9, 0))
@@ -310,12 +333,13 @@ class App(tk.Tk):
         table_frame.columnconfigure(0, weight=1)
         table_frame.rowconfigure(0, weight=1)
         self.tree = ttk.Treeview(table_frame, columns=("platform", "type", "status", "progress",
-                                                   "added"), show="tree headings", selectmode="browse")
+                                                   "added"), show="tree headings", selectmode="browse",
+                                 height=8)
         self.tree.heading("#0", text="Contenido")
-        self.tree.column("#0", width=360, minwidth=190)
-        for key, title, width in (("platform", "Plataforma", 105), ("type", "Tipo", 90),
-                                  ("status", "Estado", 115), ("progress", "Progreso", 100),
-                                  ("added", "Añadido", 130)):
+        self.tree.column("#0", width=320, minwidth=190)
+        for key, title, width in (("platform", "Plataforma", 100), ("type", "Tipo", 80),
+                                  ("status", "Estado", 110), ("progress", "Progreso", 90),
+                                  ("added", "Añadido", 115)):
             self.tree.heading(key, text=title)
             self.tree.column(key, width=width, minwidth=70, stretch=key == "added")
         self.tree.grid(row=0, column=0, sticky="nsew")
@@ -611,16 +635,46 @@ class App(tk.Tk):
             self._render_queue()
             self._set_message("Tarea quitada del historial; los archivos se conservan")
 
+    def _schedule_update_check(self, delay_ms: int) -> None:
+        if self._closed or not REPOSITORY:
+            return
+        if self._update_timer is not None:
+            self.after_cancel(self._update_timer)
+        self._update_timer = self.after(delay_ms, self._check_updates)
+
+    def _on_window_focus(self, _event=None) -> None:
+        if self._last_update_check and time.monotonic() - self._last_update_check >= FOCUS_CHECK_SECONDS:
+            self._check_updates()
+
+    def _show_update_button(self, release: Release | None, *, retry: bool = False) -> None:
+        if release:
+            self.update_button.configure(
+                state="normal", command=self._install_update,
+                text=f"Actualización {release.version} disponible",
+                bg=ERROR, fg="#ffffff", activebackground=ERROR_HOVER,
+                activeforeground="#ffffff", highlightbackground=ERROR,
+            )
+        else:
+            self.update_button.configure(
+                state="normal", command=lambda: self._check_updates(manual=True),
+                text="Reintentar búsqueda" if retry else "Buscar actualizaciones",
+                bg=SURFACE, fg=INK, activebackground=SOFT,
+                activeforeground=INK, highlightbackground=LINE,
+            )
+
     def _check_updates(self, *, manual: bool = False) -> None:
-        self._update_timer = None
         if self._closed or self._checking_updates or self._downloading_update:
             return
+        if self._update_timer is not None:
+            self.after_cancel(self._update_timer)
+            self._update_timer = None
         if not REPOSITORY:
             if manual:
                 self._set_message("Las actualizaciones se activan al publicar el repositorio.")
             return
         self._checking_updates = True
-        if manual:
+        self._last_update_check = time.monotonic()
+        if not self.available_release:
             self.update_button.configure(state="disabled", text="Buscando…")
 
         def worker() -> None:
@@ -709,26 +763,27 @@ class App(tk.Tk):
                 elif event == "update_check":
                     release, manual, error = payload
                     self._checking_updates = False
+                    self._schedule_update_check(RETRY_INTERVAL_MS if error else CHECK_INTERVAL_MS)
                     if error:
                         if manual:
                             self._set_message(f"No se pudo buscar actualizaciones: {error}", error=True)
+                        if not self.available_release:
+                            self._show_update_button(None, retry=True)
                     elif release:
                         self.available_release = release
-                        self.update_button.configure(state="normal", command=self._install_update,
-                                                     text=f"Actualizar a {release.version}")
+                        self._show_update_button(release)
                         self._set_message(f"Nueva versión {release.version} disponible")
-                        if not manual:
+                        if not manual and release.version != self._prompted_release_version:
+                            self._prompted_release_version = release.version
                             self.after_idle(self._install_update)
-                    elif manual:
-                        self._set_message(f"Nexo Descargas {APP_VERSION} está actualizado")
-                    if not release:
+                    else:
                         self.available_release = None
-                        self.update_button.configure(state="normal", text="Buscar actualizaciones",
-                                                     command=lambda: self._check_updates(manual=True))
+                        self._show_update_button(None)
+                        if manual:
+                            self._set_message(f"Nexo Descargas {APP_VERSION} está actualizado")
                 elif event == "update_download_error":
                     self._downloading_update = False
-                    self.update_button.configure(state="normal",
-                                                 text=f"Actualizar a {self.available_release.version}")
+                    self._show_update_button(self.available_release)
                     self._set_message(f"No se pudo actualizar: {payload}", error=True)
                 elif event == "update_ready":
                     self._downloading_update = False
@@ -736,8 +791,7 @@ class App(tk.Tk):
                         subprocess.Popen([str(payload), "/CLOSEAPPLICATIONS"],
                                          cwd=str(payload.parent))
                     except OSError as exc:
-                        self.update_button.configure(state="normal",
-                                                     text=f"Actualizar a {self.available_release.version}")
+                        self._show_update_button(self.available_release)
                         self._set_message(f"No se pudo abrir el instalador: {exc}", error=True)
                     else:
                         self._close()

@@ -99,23 +99,56 @@ class AppQueueTests(unittest.TestCase):
             self.pump_until(lambda: self.app.available_release is not None)
 
         self.assertEqual(self.app.update_button.cget("state"), "normal")
-        self.assertEqual(self.app.update_button.cget("text"), "Actualizar a 0.2.0")
+        self.assertEqual(self.app.update_button.cget("text"), "Actualización 0.2.0 disponible")
+        self.assertEqual(self.app.update_button.cget("bg"), "#b4233d")
+        self.assertIsNotNone(self.app._update_timer)
 
         self.app.events.put(("update_check", (None, True, None)))
         self.pump_until(lambda: self.app.available_release is None)
         self.assertEqual(self.app.update_button.cget("text"), "Buscar actualizaciones")
 
     def test_automatic_update_opens_confirmation_dialog(self):
-        release = Release("0.1.2", "Aviso de prueba", "v0.1.2",
-                          "Nexo-Descargas-Setup-0.1.2.exe",
-                          "https://github.com/example/nexo/releases/download/v0.1.2/"
-                          "Nexo-Descargas-Setup-0.1.2.exe", "a" * 64, 100)
+        release = Release("0.1.3", "Aviso de prueba", "v0.1.3",
+                          "Nexo-Descargas-Setup-0.1.3.exe",
+                          "https://github.com/example/nexo/releases/download/v0.1.3/"
+                          "Nexo-Descargas-Setup-0.1.3.exe", "a" * 64, 100)
         with patch("app.messagebox.askyesno", return_value=False) as prompt:
             self.app.events.put(("update_check", (release, False, None)))
             self.pump_until(lambda: prompt.called)
 
-        self.assertIn("0.1.2", prompt.call_args.args[1])
-        self.assertEqual(self.app.update_button.cget("text"), "Actualizar a 0.1.2")
+        self.assertIn("0.1.3", prompt.call_args.args[1])
+        self.assertEqual(self.app.update_button.cget("text"), "Actualización 0.1.3 disponible")
+        self.app._set_message("Descargando otro archivo")
+        self.assertEqual(self.app.update_button.cget("bg"), "#b4233d")
+
+        self.app.events.put(("update_check", (None, True, "sin conexión")))
+        self.pump_until(lambda: "sin conexión" in self.app.status.cget("text"))
+        self.assertEqual(self.app.available_release, release)
+        self.assertEqual(self.app.update_button.cget("bg"), "#b4233d")
+
+        with patch("app.messagebox.askyesno", return_value=False) as repeated_prompt:
+            self.app._checking_updates = True
+            self.app.events.put(("update_check", (release, False, None)))
+            self.pump_until(lambda: not self.app._checking_updates)
+            self.app.update()
+        repeated_prompt.assert_not_called()
+
+    def test_focus_rechecks_after_long_pause(self):
+        from app import FOCUS_CHECK_SECONDS
+
+        self.app._last_update_check = time.monotonic() - FOCUS_CHECK_SECONDS - 1
+        with patch.object(self.app, "_check_updates") as check:
+            self.app._on_window_focus()
+        check.assert_called_once_with()
+
+    def test_scheduled_check_runs_and_schedules_next_check(self):
+        with patch("app.check_for_update", return_value=None):
+            self.app._schedule_update_check(1)
+            self.pump_until(lambda: self.app._last_update_check > 0)
+            self.pump_until(lambda: not self.app._checking_updates)
+
+        self.assertIsNotNone(self.app._update_timer)
+        self.assertEqual(self.app.update_button.cget("text"), "Buscar actualizaciones")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,27 @@
+Nexo Descargas includes third-party software in its Windows installer.
+
+FFmpeg and FFprobe 9.0.2, essentials build by Gyan Doshi
+  The included build reports --enable-gpl and --enable-version3 and is
+  distributed under GPLv3. See GPL-3.0.txt in the installation directory.
+  Binary source: https://www.gyan.dev/ffmpeg/builds/
+  FFmpeg source revision listed for this build:
+  https://github.com/FFmpeg/FFmpeg/commit/946fcce07b
+
+Node.js 24.15.0
+  The official Windows x64 distribution is included. Its full license and
+  third-party notices are in _internal/bin/node/LICENSE.
+  Source: https://nodejs.org/download/release/v24.15.0/
+
+yt-dlp and yt-dlp-ejs
+  Installed from their Python packages and bundled with the application.
+  Their license metadata and notices are included under _internal.
+  Sources: https://github.com/yt-dlp/yt-dlp
+           https://github.com/yt-dlp/ejs
+
+Python and PyInstaller
+  The executable includes a Python runtime packaged by PyInstaller.
+  Sources: https://www.python.org/
+           https://pyinstaller.org/
+
+Before publishing a new installer, review the licenses and source
+distribution obligations of the exact dependency versions used in it.

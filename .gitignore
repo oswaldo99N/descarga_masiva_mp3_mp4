@@ -1,0 +1,10 @@
+.venv/
+.deps/
+.tmp/
+.tools/
+.state/
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc

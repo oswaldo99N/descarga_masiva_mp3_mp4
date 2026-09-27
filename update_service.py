@@ -1,11 +1,13 @@
-"""Check GitHub Releases and fetch a verified Windows installer."""
+"""Check GitHub Releases and fetch a verified desktop installer."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import platform
 import re
+import sys
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,7 +48,22 @@ def _request(url: str) -> urllib.request.Request:
     })
 
 
-def check_for_update(repository: str = REPOSITORY, current_version: str = APP_VERSION) -> Release | None:
+def installer_filename(version: str, *, system: str | None = None,
+                       machine: str | None = None) -> str:
+    system = system or sys.platform
+    if system == "win32":
+        return f"Nexo-Descargas-Setup-{version}.exe"
+    if system == "darwin":
+        machine = (machine or platform.machine()).lower()
+        architecture = {"arm64": "arm64", "aarch64": "arm64",
+                        "x86_64": "x64", "amd64": "x64"}.get(machine)
+        if architecture:
+            return f"Nexo-Descargas-{version}-macos-{architecture}.dmg"
+    raise RuntimeError("No hay instalador disponible para este sistema.")
+
+
+def check_for_update(repository: str = REPOSITORY, current_version: str = APP_VERSION,
+                     *, system: str | None = None, machine: str | None = None) -> Release | None:
     if not repository:
         return None
     if not REPOSITORY_PATTERN.fullmatch(repository):
@@ -60,7 +77,7 @@ def check_for_update(repository: str = REPOSITORY, current_version: str = APP_VE
     if remote_version <= _version_tuple(current_version):
         return None
     version = tag.removeprefix("v")
-    expected_name = f"Nexo-Descargas-Setup-{version}.exe"
+    expected_name = installer_filename(version, system=system, machine=machine)
     for asset in data.get("assets", []):
         if asset.get("name") != expected_name:
             continue

@@ -1,4 +1,4 @@
-"""Locations shared by source runs and the installed Windows application."""
+"""Locations shared by source runs and installed desktop applications."""
 
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ def resource_path(*parts: str) -> Path:
 
 
 def data_directory() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / APP_FOLDER
     local = os.environ.get("LOCALAPPDATA")
     root = Path(local) if local else Path.home() / "AppData" / "Local"
     return root / APP_FOLDER

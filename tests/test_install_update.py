@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
 
-from app_paths import migrate_legacy_state
-from update_service import Release, check_for_update, download_installer
+from app_paths import data_directory, migrate_legacy_state
+from update_service import Release, check_for_update, download_installer, installer_filename
 
 
 class _Response(io.BytesIO):
@@ -15,6 +15,19 @@ class _Response(io.BytesIO):
 
 
 class InstallUpdateTests(unittest.TestCase):
+    def test_macos_history_is_kept_in_application_support(self):
+        with patch("app_paths.sys.platform", "darwin"):
+            self.assertEqual(data_directory(),
+                             Path.home() / "Library" / "Application Support" / "NexoDescargas")
+
+    def test_installer_names_match_each_desktop_platform(self):
+        self.assertEqual(installer_filename("0.1.4", system="win32"),
+                         "Nexo-Descargas-Setup-0.1.4.exe")
+        self.assertEqual(installer_filename("0.1.4", system="darwin", machine="arm64"),
+                         "Nexo-Descargas-0.1.4-macos-arm64.dmg")
+        self.assertEqual(installer_filename("0.1.4", system="darwin", machine="x86_64"),
+                         "Nexo-Descargas-0.1.4-macos-x64.dmg")
+
     def test_legacy_queue_and_archives_are_copied_without_deleting_originals(self):
         base = Path(__file__).resolve().parent / f"migration_{uuid4().hex}"
         old = base / "old"
@@ -57,6 +70,26 @@ class InstallUpdateTests(unittest.TestCase):
         self.assertEqual(release.notes, "Mejoras")
         with patch("update_service.urllib.request.urlopen", return_value=_Response(body.encode())):
             self.assertIsNone(check_for_update("example/nexo", "0.2.0"))
+
+    def test_macos_release_uses_matching_architecture(self):
+        contents = b"mac disk image"
+        digest = hashlib.sha256(contents).hexdigest()
+        assets = []
+        for architecture in ("arm64", "x64"):
+            name = f"Nexo-Descargas-0.2.0-macos-{architecture}.dmg"
+            assets.append({
+                "name": name,
+                "browser_download_url":
+                    f"https://github.com/example/nexo/releases/download/v0.2.0/{name}",
+                "digest": f"sha256:{digest}",
+                "size": len(contents),
+            })
+        body = json.dumps({"tag_name": "v0.2.0", "assets": assets})
+        with patch("update_service.urllib.request.urlopen", return_value=_Response(body.encode())):
+            release = check_for_update("example/nexo", "0.1.4", system="darwin",
+                                       machine="arm64")
+        self.assertEqual(release.filename, assets[0]["name"])
+
 
     def test_installer_hash_is_checked_before_it_is_kept(self):
         base = Path(__file__).resolve().parent / f"update_{uuid4().hex}"

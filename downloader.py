@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import sys
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -77,17 +78,19 @@ class QuietLogger:
 
 
 def ffmpeg_directory() -> Path | None:
+    suffix = ".exe" if sys.platform == "win32" else ""
     bundled = resource_path("bin", "ffmpeg")
-    if (bundled / "ffmpeg.exe").is_file() and (bundled / "ffprobe.exe").is_file():
+    if (bundled / f"ffmpeg{suffix}").is_file() and (bundled / f"ffprobe{suffix}").is_file():
         return bundled
     bundled = resource_path(".tools", "ffmpeg")
-    if (bundled / "ffmpeg.exe").is_file() and (bundled / "ffprobe.exe").is_file():
+    if (bundled / f"ffmpeg{suffix}").is_file() and (bundled / f"ffprobe{suffix}").is_file():
         return bundled
     return None
 
 
 def node_executable() -> Path | None:
-    bundled = resource_path("bin", "node", "node.exe")
+    name = "node.exe" if sys.platform == "win32" else "node"
+    bundled = resource_path("bin", "node", name)
     return bundled if bundled.is_file() else None
 
 
@@ -95,8 +98,9 @@ def require_dependencies(options: DownloadOptions) -> None:
     try:
         import yt_dlp  # noqa: F401
     except ImportError as exc:
+        installer = "instalar.ps1" if sys.platform == "win32" else "crear_instalador_macos.sh"
         raise RuntimeError(
-            "Falta yt-dlp. Ejecuta instalar.ps1 para instalar las dependencias."
+            f"Falta yt-dlp. Ejecuta {installer} para instalar las dependencias."
         ) from exc
     if not ffmpeg_directory() and (not shutil.which("ffmpeg") or not shutil.which("ffprobe")):
         raise RuntimeError(

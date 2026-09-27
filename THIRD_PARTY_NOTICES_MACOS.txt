@@ -1,0 +1,29 @@
+Nexo Descargas for macOS includes third-party software.
+
+FFmpeg and FFprobe 9.0.2
+  Built from the official FFmpeg source with GPLv3 enabled and the LAME MP3
+  encoder linked statically. The source archive is distributed alongside the
+  macOS disk image. GPL-3.0.txt is included in the app bundle.
+  Source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.gz
+
+LAME 4.0
+  The static libmp3lame library is included in the FFmpeg executables.
+  Its source archive is distributed alongside the macOS disk image, and
+  its license is included as lame-COPYING.txt in the app bundle.
+  Source: https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz
+
+Node.js 24.15.0
+  The official macOS executable is included. Its complete license and
+  third-party notices are included in bin/node/LICENSE inside the app bundle.
+  Source: https://nodejs.org/download/release/v24.15.0/
+
+yt-dlp and yt-dlp-ejs
+  Installed from their Python packages and bundled with the application.
+  Their package metadata and notices are included inside the app bundle.
+  Sources: https://github.com/yt-dlp/yt-dlp
+           https://github.com/yt-dlp/ejs
+
+Python and PyInstaller
+  The app includes a Python runtime packaged by PyInstaller.
+  Sources: https://www.python.org/
+           https://pyinstaller.org/

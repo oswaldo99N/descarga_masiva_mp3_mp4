@@ -1,10 +1,11 @@
-"""Windows desktop interface for Nexo Descargas."""
+"""Desktop interface for Nexo Descargas."""
 
 from __future__ import annotations
 
 import os
 import queue
 import subprocess
+import sys
 import threading
 import time
 import tkinter as tk
@@ -20,7 +21,9 @@ from downloader import (
     Progress,
     clean_error,
     download,
+    ffmpeg_directory,
     inspect_media,
+    node_executable,
     require_dependencies,
 )
 from providers import UnsupportedLink, parse_media_link
@@ -390,7 +393,10 @@ class App(tk.Tk):
         if not path.is_dir():
             self._set_message("La carpeta aún no existe.", error=True)
             return
-        os.startfile(path)
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", str(path)])
+        else:
+            os.startfile(path)
 
     def _open_form_folder(self) -> None:
         self._open_folder(Path(self.folder.get()).expanduser())
@@ -795,12 +801,20 @@ class App(tk.Tk):
                 elif event == "update_ready":
                     self._downloading_update = False
                     try:
-                        subprocess.Popen([str(payload), "/CLOSEAPPLICATIONS"],
-                                         cwd=str(payload.parent))
+                        if sys.platform == "darwin":
+                            subprocess.Popen(["open", str(payload)], cwd=str(payload.parent))
+                        else:
+                            subprocess.Popen([str(payload), "/CLOSEAPPLICATIONS"],
+                                             cwd=str(payload.parent))
                     except OSError as exc:
                         self._show_update_button(self.available_release)
                         self._set_message(f"No se pudo abrir el instalador: {exc}", error=True)
                     else:
+                        if sys.platform == "darwin":
+                            messagebox.showinfo(
+                                "Actualizar Nexo Descargas",
+                                "Se abrió el instalador. Arrastra Nexo Descargas a Aplicaciones "
+                                "para sustituir la versión anterior.", parent=self)
                         self._close()
                         return
         except queue.Empty:
@@ -821,4 +835,20 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
-    App().mainloop()
+    if sys.argv[1:] == ["--smoke-test"]:
+        ffmpeg_bin = ffmpeg_directory()
+        node_bin = node_executable()
+        if ffmpeg_bin is None or node_bin is None:
+            raise RuntimeError("El paquete no incluye FFmpeg, FFprobe y Node.js.")
+        for command, option in (
+            (ffmpeg_bin / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg"), "-version"),
+            (ffmpeg_bin / ("ffprobe.exe" if os.name == "nt" else "ffprobe"), "-version"),
+            (node_bin, "--version"),
+        ):
+            subprocess.run([str(command), option], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        app = App()
+        app.update_idletasks()
+        app._close()
+    else:
+        App().mainloop()

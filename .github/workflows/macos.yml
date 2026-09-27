@@ -1,0 +1,48 @@
+name: Crear instalador macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    env:
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      CODESIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Instalar herramientas de compilación
+        run: brew install lame pkgconf nasm
+      - name: Importar certificado de firma si está configurado
+        run: bash macos/importar_certificado.sh
+      - name: Crear instalador y comprobar aplicación
+        run: bash crear_instalador_macos.sh
+      - name: Guardar DMG y fuentes redistribuidas
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexo-macos-${{ matrix.arch }}
+          path: |
+            dist/macos/${{ matrix.arch }}/*.dmg
+            .tools/macos/source/ffmpeg-9.0.2.tar.gz
+            .tools/macos/source/lame-4.0.tar.gz
+          if-no-files-found: error
+          retention-days: 14

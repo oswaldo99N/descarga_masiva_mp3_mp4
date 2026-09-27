@@ -1,6 +1,6 @@
 # Nexo Descargas
 
-Aplicación de escritorio para Windows que descarga audio y video de YouTube, Facebook, Instagram, X y TikTok mediante `yt-dlp`. YouTube admite videos individuales y playlists. Los enlaces de las otras plataformas se tratan como publicaciones individuales.
+Aplicación de escritorio para Windows y macOS que descarga audio y video de YouTube, Facebook, Instagram, X y TikTok mediante `yt-dlp`. YouTube admite videos individuales y playlists. Los enlaces de las otras plataformas se tratan como publicaciones individuales.
 
 ## Instalación para usuarios
 
@@ -29,6 +29,22 @@ powershell -ExecutionPolicy Bypass -File .\crear_instalador.ps1
 El script prepara una copia oficial de Node.js, verifica su SHA-256, empaqueta la app con PyInstaller y crea `dist/installer/Nexo-Descargas-Setup-X.Y.Z.exe`. Antes de publicar la próxima versión, cambia `APP_VERSION` en `release_config.py` y adjunta el instalador a una publicación estable del repositorio `oswaldo99N/descarga_masiva_mp3_mp4` con etiqueta `vX.Y.Z`. El repositorio de publicaciones debe ser público para que la app consulte su API sin credenciales. No subas `.venv`, `.tools`, `dist`, videos, historial ni cookies al repositorio.
 
 Revisa `THIRD_PARTY_NOTICES.txt` y las obligaciones de distribución del código fuente de los componentes incluidos antes de publicar el instalador.
+
+## Instalador para macOS
+
+El instalador de Mac es un `.dmg` con la aplicación y un acceso a **Aplicaciones**. Hay archivos separados para Apple Silicon (`arm64`) y Mac Intel (`x64`). El historial se guarda en `~/Library/Application Support/NexoDescargas`; la aplicación incluye FFmpeg, FFprobe, Node.js y las dependencias de Python.
+
+Para construirlo en un Mac, instala Homebrew y `brew install lame pkgconf nasm`, clona el repositorio y ejecuta:
+
+```bash
+bash crear_instalador_macos.sh
+```
+
+El script descarga Node.js y FFmpeg de sus fuentes oficiales y verifica sus SHA-256. Genera `dist/macos/arm64/Nexo-Descargas-X.Y.Z-macos-arm64.dmg` o el equivalente `x64`. También puedes ejecutar manualmente el workflow **Crear instalador macOS** en GitHub Actions; construye ambas arquitecturas y conserva los `.dmg` como artefactos. Los archivos de prueba sin firma Developer ID no se publican como actualización estable.
+
+Para distribuir el `.dmg` sin avisos de Gatekeeper, configura en *Settings → Secrets and variables → Actions* del repositorio los secretos `MACOS_CERTIFICATE_P12` (certificado Developer ID Application exportado como P12 y codificado en base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGN_IDENTITY`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` y `APPLE_TEAM_ID`. El workflow firma la aplicación con Developer ID, envía cada `.dmg` a la notarización de Apple y agrega el ticket. No incluyas certificados ni contraseñas en el repositorio o en mensajes.
+
+Una publicación estable para las dos plataformas debe adjuntar el instalador Windows `Nexo-Descargas-Setup-X.Y.Z.exe`, los dos `.dmg` con sus nombres exactos y los archivos fuente de FFmpeg y LAME correspondientes. El comprobador de actualizaciones elige el instalador según el sistema y la arquitectura; en Mac abre el `.dmg` y pide arrastrar la app a Aplicaciones.
 
 ## Nueva descarga
 

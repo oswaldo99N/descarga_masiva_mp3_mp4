@@ -15,10 +15,13 @@ case "$arch" in
     *) echo "Arquitectura no compatible: $arch" >&2; exit 1 ;;
 esac
 
-"${PYTHON:-python3}" -m venv .venv-macos
+if [[ "${NEXO_SKIP_PREPARE:-}" != 1 ]]; then
+    "${PYTHON:-python3}" -m venv .venv-macos
+    "$root/.venv-macos/bin/python" -m pip install --disable-pip-version-check \
+        -r requirements.txt -r requirements-build.txt
+    bash "$root/preparar_dependencias_macos.sh"
+fi
 python="$root/.venv-macos/bin/python"
-"$python" -m pip install --disable-pip-version-check -r requirements.txt -r requirements-build.txt
-bash "$root/preparar_dependencias_macos.sh"
 "$python" "$root/preparar_icono_macos.py"
 
 version="$("$python" -c 'from release_config import APP_VERSION; print(APP_VERSION)')"
@@ -67,12 +70,4 @@ if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
     codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$dmg"
     codesign --verify --verbose=2 "$dmg"
 fi
-if [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" && \
-      -n "${APPLE_TEAM_ID:-}" && -n "${CODESIGN_IDENTITY:-}" ]]; then
-    xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" \
-        --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
-    xcrun stapler staple "$dmg"
-    xcrun stapler validate "$dmg"
-fi
-
 echo "Instalador Mac listo: $dmg"

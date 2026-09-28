@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import tkinter as tk
+import webbrowser
 from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -28,7 +29,8 @@ from downloader import (
 )
 from providers import UnsupportedLink, parse_media_link
 from queue_store import QueueStore
-from release_config import APP_VERSION, REPOSITORY
+from release_config import (APP_VERSION, DEVELOPER_NAME, DEVELOPER_URL,
+                            REPOSITORY, SUPPORT_URL)
 from update_service import Release, check_for_update, download_installer
 
 
@@ -216,6 +218,24 @@ class App(tk.Tk):
         self.update_button = self._button(footer, "Buscar actualizaciones",
                                           lambda: self._check_updates(manual=True), secondary=True)
         self.update_button.grid(row=0, column=1, sticky="e")
+        credit = tk.Button(
+            footer, text=f"Desarrollado por {DEVELOPER_NAME}  ·  {DEVELOPER_URL.removeprefix('https://')}",
+            command=lambda: self._open_website(DEVELOPER_URL),
+            font=("Segoe UI", 9), fg=ACCENT, bg=SURFACE,
+            activeforeground=ACCENT_HOVER, activebackground=SURFACE,
+            relief="flat", bd=0, padx=0, pady=0, cursor="hand2",
+            highlightthickness=0,
+        )
+        credit.grid(row=1, column=0, sticky="w", pady=(5, 0))
+        if SUPPORT_URL.startswith("https://"):
+            support = tk.Button(
+                footer, text="Apoyar el desarrollo", command=lambda: self._open_website(SUPPORT_URL),
+                font=("Segoe UI Semibold", 9), fg=ACCENT, bg=SURFACE,
+                activeforeground=ACCENT_HOVER, activebackground=SURFACE,
+                relief="flat", bd=0, padx=0, pady=0, cursor="hand2",
+                highlightthickness=0,
+            )
+            support.grid(row=1, column=1, sticky="e", pady=(5, 0))
 
     def _build_new_tab(self) -> None:
         tab = self.new_tab
@@ -377,6 +397,10 @@ class App(tk.Tk):
 
     def _set_message(self, text: str, *, error=False) -> None:
         self.status.configure(text=text, foreground=ERROR if error else INK)
+
+    def _open_website(self, url: str) -> None:
+        if not url.startswith("https://") or not webbrowser.open_new_tab(url):
+            self._set_message("No se pudo abrir el enlace en el navegador.", error=True)
 
     def _paste(self) -> None:
         try:

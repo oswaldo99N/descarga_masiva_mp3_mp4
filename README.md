@@ -10,6 +10,8 @@ Al abrir la aplicación se buscan nuevas versiones en [GitHub](https://github.co
 
 El icono de la aplicación, de los accesos directos y del instalador se genera a partir de `assets/logo.png` mediante `preparar_icono.py`.
 
+La barra inferior acredita a **Anovix** y enlaza a [anovix.vercel.app](https://anovix.vercel.app). Para ofrecer aportes voluntarios, configura `SUPPORT_URL` en `release_config.py` con el enlace público de PayPal.Me de Anovix y publica una nueva versión. El botón **Apoyar el desarrollo** solo aparece cuando ese enlace está configurado; la app abre el navegador y nunca solicita datos de pago.
+
 ## Ejecutar desde el código fuente
 
 Necesitas Python 3.10 o superior y conexión a Internet. En PowerShell, dentro de esta carpeta, ejecuta:
@@ -40,7 +42,7 @@ Para construirlo en un Mac, instala Homebrew y `brew install lame pkgconf nasm`,
 bash crear_instalador_macos.sh
 ```
 
-El script descarga Node.js y FFmpeg de sus fuentes oficiales y verifica sus SHA-256. Genera `dist/macos/arm64/Nexo-Descargas-X.Y.Z-macos-arm64.dmg` o el equivalente `x64`. También puedes ejecutar manualmente el workflow **Crear instalador macOS** en GitHub Actions; construye ambas arquitecturas y conserva los `.dmg` como artefactos. Los archivos de prueba sin firma Developer ID no se publican como actualización estable.
+El script descarga Node.js y FFmpeg de sus fuentes oficiales y verifica sus SHA-256. Genera `dist/macos/arm64/Nexo-Descargas-X.Y.Z-macos-arm64.dmg` o el equivalente `x64`. También puedes ejecutar manualmente el workflow **Crear instalador macOS** en GitHub Actions; construye ambas arquitecturas y conserva los `.dmg` como artefactos. Los archivos de prueba sin firma Developer ID no se publican como actualización estable. En un Mac con el certificado configurado, ejecuta `bash macos/notarizar.sh` después de crear el `.dmg`.
 
 Para distribuir el `.dmg` sin avisos de Gatekeeper, configura en *Settings → Secrets and variables → Actions* del repositorio los secretos `MACOS_CERTIFICATE_P12` (certificado Developer ID Application exportado como P12 y codificado en base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGN_IDENTITY`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` y `APPLE_TEAM_ID`. El workflow firma la aplicación con Developer ID, envía cada `.dmg` a la notarización de Apple y agrega el ticket. No incluyas certificados ni contraseñas en el repositorio o en mensajes.
 
